@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Competitor App Comparison — Interactive Radar</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="description" content="Interactive radar chart comparing Google App, Chrome, Edge, ChatGPT, Copilot, Gemini, and Perplexity across 10 dimensions."/>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:0;background:#0f1115;color:#e8eaf0}
+    header{padding:14px 16px;border-bottom:1px solid #232732;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    h1{font-size:18px;margin:0;font-weight:600}
+    .sub{opacity:.75;font-size:13px}
+    #wrap{display:grid;grid-template-columns:260px 1fr;gap:0;min-height:100vh}
+    #controls{border-right:1px solid #232732;padding:14px 12px;position:sticky;top:0;height:100vh;overflow:auto}
+    #chart{height:100vh}
+    .section{margin-bottom:18px}
+    .label{display:block;margin:6px 0 8px;font-size:12px;opacity:.8;letter-spacing:.02em;text-transform:uppercase}
+    button{background:#1a1f2b;border:1px solid #2a3140;color:#e8eaf0;padding:8px 10px;border-radius:10px;font-size:13px;cursor:pointer}
+    button:hover{background:#202836}
+    button.active{background:#2b3350;border-color:#556191}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .switch{display:flex;align-items:center;gap:8px;margin:4px 0}
+    input[type=range]{width:100%}
+    a small{opacity:.75}
+    .note{opacity:.7;font-size:12px;margin-top:6px;line-height:1.3}
+    footer{border-top:1px solid #232732;padding:10px 16px;font-size:12px;opacity:.75}
+    .src{margin-top:8px;line-height:1.35}
+    .src a{color:#9bbcff}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Competitor App Comparison — Radar</h1>
+    <span class="sub">Hover to inspect • Click legend to toggle series • Use focus buttons to highlight one app</span>
+  </header>
+
+  <div id="wrap">
+    <aside id="controls">
+      <div class="section">
+        <span class="label">Focus</span>
+        <div class="grid" id="focusButtons"></div>
+        <div class="switch" style="margin-top:10px;">
+          <button id="showAllBtn" title="Show all apps">Show All</button>
+          <button id="hideAllBtn" title="Hide all apps">Hide All</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <span class="label">Appearance</span>
+        <div class="switch">
+          <label style="width:90px">Line width</label>
+          <input id="lineWidth" type="range" min="1" max="6" value="3">
+        </div>
+        <div class="switch">
+          <label style="width:90px">Fill opacity</label>
+          <input id="fillOpacity" type="range" min="0" max="0.8" step="0.05" value="0.35">
+        </div>
+        <div class="switch">
+          <label style="width:90px">Marker size</label>
+          <input id="markerSize" type="range" min="4" max="12" value="8">
+        </div>
+        <div class="note">Tip: Increase line width and marker size for rooms; lower opacity to reduce clutter.</div>
+      </div>
+
+      <div class="section">
+        <span class="label">Export</span>
+        <div class="grid">
+          <button id="pngBtn">Download PNG</button>
+          <button id="svgBtn">Download SVG</button>
+        </div>
+        <div class="note">PNG for slides • SVG for vector editing</div>
+      </div>
+
+      <div class="section">
+        <span class="label">Legend</span>
+        <div class="note">Click items in the legend to toggle any series on/off.</div>
+      </div>
+
+      <div class="section">
+        <span class="label">About</span>
+        <div class="note">Data source: analyst-estimated midpoints from provided table.</div>
+      </div>
+    </aside>
+
+    <main id="chart"></main>
+  </div>
+
+  <footer>
+    Built for sharing via GitHub Pages. © 2025
+    <div class="src">
+      Inputs included: Google App, Chrome, Edge, ChatGPT, Copilot, Gemini, Perplexity across 10 dimensions.
+    </div>
+  </footer>
+
+  <script>
+    const dimensions = ["Speed","Relevance","Trust/Transparency","Personalization","Multimodality","Convenience/Continuity","Discovery/Feed","Local Utility","Notifications","Share/Save/Continue"];
+
+    const series = {
+      "Google App": [5,5,3,5,5,4,5,5,4,4],
+      "Chrome":     [5,4,3,4,4,5,4,4,4,5],
+      "Edge":       [4,4,3,4,4,4,3.5,3,4,4],
+      "ChatGPT":    [4,4,3.5,3,4.5,3,2,2,3,3],
+      "Copilot":    [4,4,4,3,4.5,4,2.5,3,3,4],
+      "Gemini":     [4,4,3.5,4,5,4,3.5,4,4,4],
+      "Perplexity": [4,4,5,3,4,3,2,2,3,3]
+    };
+
+    const names = Object.keys(series);
+    const baseLineWidth = 3;
+    const baseOpacity = 0.35;
+    const baseMarkerSize = 8;
+
+    const traces = names.map((name) => ({
+      type: 'scatterpolar',
+      r: series[name].concat(series[name][0]),
+      theta: dimensions.concat(dimensions[0]),
+      name,
+      mode: 'lines+markers',
+      line: { width: baseLineWidth },
+      marker: { size: baseMarkerSize },
+      fill: 'toself',
+      opacity: baseOpacity,
+      hovertemplate: `<b>${name}</b><br>%{theta}: <b>%{r}</b><extra></extra>`
+    }));
+
+    const layout = {
+      paper_bgcolor: '#0f1115',
+      plot_bgcolor: '#0f1115',
+      font: { color: '#e8eaf0' },
+      margin: { t: 40, r: 30, b: 30, l: 30 },
+      showlegend: true,
+      legend: { orientation: 'h', x: 0, y: -0.08 },
+      polar: {
+        bgcolor: '#0f1115',
+        radialaxis: {
+          range: [0,5],
+          tickvals: [0,1,2,3,4,5],
+          tickfont: { size: 11 },
+          gridcolor: '#232732',
+          linecolor: '#3a3f4d'
+        },
+        angularaxis: {
+          direction: 'clockwise',
+          tickfont: { size: 12 },
+          gridcolor: '#232732',
+          linecolor: '#3a3f4d'
+        }
+      }
+    };
+
+    const config = {
+      responsive: true,
+      displaylogo: false,
+      modeBarButtonsToAdd: ['toggleSpikelines'],
+      toImageButtonOptions: { filename: 'app-comparison-radar' }
+    };
+
+    Plotly.newPlot('chart', traces, layout, config).then(gd => {
+      // Build Focus buttons
+      const focusWrap = document.getElementById('focusButtons');
+      const mkBtn = (label) => {
+        const btn = document.createElement('button');
+        btn.textContent = label;
+        btn.onclick = () => focus(label);
+        return btn;
+      };
+      names.forEach(n => focusWrap.appendChild(mkBtn(n)));
+
+      const showAllBtn = document.getElementById('showAllBtn');
+      const hideAllBtn = document.getElementById('hideAllBtn');
+
+      showAllBtn.onclick = () => {
+        const vis = Array(names.length).fill(true);
+        Plotly.restyle(gd, {visible: vis});
+      };
+
+      hideAllBtn.onclick = () => {
+        const vis = Array(names.length).fill('legendonly');
+        Plotly.restyle(gd, {visible: vis});
+      };
+
+      function focus(targetName){
+        const vis = names.map(n => n === targetName ? true : 'legendonly');
+        Plotly.restyle(gd, {visible: vis});
+      }
+
+      // Appearance controls
+      const lw = document.getElementById('lineWidth');
+      const fo = document.getElementById('fillOpacity');
+      const ms = document.getElementById('markerSize');
+
+      lw.oninput = (e) => Plotly.restyle(gd, {'line.width': +e.target.value});
+      fo.oninput = (e) => Plotly.restyle(gd, {opacity: +e.target.value});
+      ms.oninput = (e) => Plotly.restyle(gd, {'marker.size': +e.target.value});
+
+      // Export buttons
+      document.getElementById('pngBtn').onclick = () => Plotly.downloadImage(gd, {format:'png', filename:'app-comparison-radar'});
+      document.getElementById('svgBtn').onclick = () => Plotly.downloadImage(gd, {format:'svg', filename:'app-comparison-radar'});
+    });
+  </script>
+</body>
+</html>
